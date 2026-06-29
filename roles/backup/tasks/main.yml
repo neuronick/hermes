@@ -1,0 +1,75 @@
+- name: Install backup packages
+  ansible.builtin.apt:
+    name:
+      - openssh-client
+      - restic
+    state: present
+    update_cache: true
+
+- name: Create Excalibur config directory
+  ansible.builtin.file:
+    path: /etc/excalibur
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Create restic environment placeholder
+  ansible.builtin.template:
+    src: backup.env.j2
+    dest: "{{ excalibur_backup_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+
+- name: Write restic excludes
+  ansible.builtin.template:
+    src: backup-excludes.txt.j2
+    dest: "{{ excalibur_backup_excludes_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Write restic backup wrapper
+  ansible.builtin.template:
+    src: excalibur-restic.j2
+    dest: "{{ excalibur_backup_script }}"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write restic backup service
+  ansible.builtin.template:
+    src: excalibur-backup.service.j2
+    dest: /etc/systemd/system/excalibur-backup.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Write restic backup timer
+  ansible.builtin.template:
+    src: excalibur-backup.timer.j2
+    dest: /etc/systemd/system/excalibur-backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Reload systemd for backup units
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Configure backup timer state
+  ansible.builtin.service:
+    name: excalibur-backup.timer
+    enabled: "{{ excalibur_backup_enable_timer | bool }}"
+    state: "{{ 'started' if excalibur_backup_enable_timer | bool else 'stopped' }}"
+
+- name: Report backup configuration status
+  ansible.builtin.debug:
+    msg:
+      - "Restic wrapper: {{ excalibur_backup_script }}"
+      - "Restic env file: {{ excalibur_backup_env_file }}"
+      - "Timer enabled: {{ excalibur_backup_enable_timer | bool }}"
+      - "Set RESTIC_REPOSITORY and RESTIC_PASSWORD in {{ excalibur_backup_env_file }} before enabling backups."
+

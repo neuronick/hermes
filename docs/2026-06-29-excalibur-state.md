@@ -30,6 +30,9 @@
   `excalibur` at `100.75.126.41`.
 - `cloudflared` installed, no tunnel service installed yet.
 - Hermes Docker image pulled: `nousresearch/hermes-agent:latest`.
+- Restic backup tooling installed. The backup timer is provisioned but disabled
+  until `/etc/excalibur/backup.env` is configured with a NAS repository and
+  password.
 - No failed systemd units after T7 boot.
 - No USB reset, I/O error, undervoltage, or throttling evidence after T7 boot.
 
@@ -61,6 +64,8 @@ until their domain entries are enabled.
 - Ansible inventory now uses the Tailscale IP `100.75.126.41`.
 
 - Create/install the Cloudflare Tunnel when public ingress is ready.
+- Configure `/etc/excalibur/backup.env`, run the first restic backup, and enable
+  `excalibur_backup_enable_timer`.
 - Populate domain-specific `secrets/hermes.env` files.
 - Enable `excalibur-hermes.service` only after at least one domain has valid
   credentials.

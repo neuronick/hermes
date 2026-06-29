@@ -57,3 +57,43 @@ ansible-playbook playbooks/40-hermes-containers.yml
 ```
 
 The initial active domain is `openadviser` / Miro only.
+
+## Backups
+
+Backups use restic and are provisioned by:
+
+```sh
+ansible-playbook playbooks/50-backup.yml
+```
+
+Secrets live only on Excalibur:
+
+```text
+/etc/excalibur/backup.env
+```
+
+Minimal Synology/NAS-over-SSH setup:
+
+```sh
+sudo editor /etc/excalibur/backup.env
+```
+
+Set:
+
+```sh
+RESTIC_REPOSITORY=sftp:backup-user@nas-host:/volume1/backups/excalibur-restic
+RESTIC_PASSWORD=<strong generated password>
+RESTIC_INIT_REPOSITORY=true
+```
+
+Then test:
+
+```sh
+sudo /usr/local/sbin/excalibur-restic backup
+sudo /usr/local/sbin/excalibur-restic snapshots
+sudo /usr/local/sbin/excalibur-restic check
+```
+
+After the first successful backup, set `RESTIC_INIT_REPOSITORY=false` and set
+`excalibur_backup_enable_timer: true` in inventory, then reapply
+`playbooks/50-backup.yml`.

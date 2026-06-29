@@ -1,0 +1,15 @@
+[Unit]
+Description=Excalibur encrypted restic backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart={{ excalibur_backup_script }} backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/srv/excalibur /etc/excalibur /root/.cache/restic
+

@@ -25,6 +25,28 @@ excalibur_allow_lan_ssh: true
 tailscale_auth_key: ""
 cloudflare_tunnel_token: ""
 
+excalibur_backup_enable_timer: false
+excalibur_backup_calendar: "*-*-* 03:25:00"
+excalibur_backup_randomized_delay: 45m
+excalibur_backup_env_file: /etc/excalibur/backup.env
+excalibur_backup_script: /usr/local/sbin/excalibur-restic
+excalibur_backup_excludes_file: /etc/excalibur/backup-excludes.txt
+excalibur_backup_keep_daily: 14
+excalibur_backup_keep_weekly: 8
+excalibur_backup_keep_monthly: 6
+excalibur_backup_paths:
+  - /srv/excalibur
+  - /etc/hostname
+  - /etc/hosts
+  - /etc/fstab
+  - /etc/ssh/sshd_config
+  - /etc/ssh/sshd_config.d
+  - /etc/ufw
+  - /etc/fail2ban
+  - /etc/systemd/system/excalibur-hermes.service
+  - /etc/docker/daemon.json
+  - /etc/apt/sources.list.d
+
 excalibur_base_packages:
   - apt-transport-https
   - apt-listchanges
@@ -40,12 +62,14 @@ excalibur_base_packages:
   - htop
   - jq
   - nvme-cli
+  - openssh-client
   - parted
   - python3-apt
   - python3-debian
   - python3-pip
   - python3-venv
   - ripgrep
+  - restic
   - rsync
   - smartmontools
   - sysstat

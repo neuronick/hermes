@@ -1,0 +1,7 @@
+- name: Excalibur restic backups
+  hosts: excalibur
+  become: true
+  gather_facts: true
+  roles:
+    - backup
+

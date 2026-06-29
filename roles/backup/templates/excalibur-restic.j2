@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE="{{ excalibur_backup_env_file }}"
+EXCLUDES_FILE="{{ excalibur_backup_excludes_file }}"
+
+if [[ ! -r "$ENV_FILE" ]]; then
+  echo "Missing restic environment file: $ENV_FILE" >&2
+  exit 2
+fi
+
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+if [[ -z "${RESTIC_REPOSITORY:-}" || -z "${RESTIC_PASSWORD:-}" ]]; then
+  echo "RESTIC_REPOSITORY and RESTIC_PASSWORD must be set in $ENV_FILE" >&2
+  exit 2
+fi
+
+cmd="${1:-backup}"
+shift || true
+
+existing_paths=()
+{% for path in excalibur_backup_paths %}
+if [[ -e "{{ path }}" ]]; then
+  existing_paths+=("{{ path }}")
+fi
+{% endfor %}
+
+ensure_repo() {
+  if restic snapshots >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [[ "${RESTIC_INIT_REPOSITORY:-false}" == "true" ]]; then
+    restic init
+    return 0
+  fi
+
+  echo "Restic repository is not initialized or not reachable." >&2
+  echo "Set RESTIC_INIT_REPOSITORY=true once, or run: {{ excalibur_backup_script }} init" >&2
+  return 3
+}
+
+case "$cmd" in
+  init)
+    restic init "$@"
+    ;;
+  backup)
+    ensure_repo
+    if [[ "{% raw %}${#existing_paths[@]}{% endraw %}" -eq 0 ]]; then
+      echo "No configured backup paths exist." >&2
+      exit 4
+    fi
+    restic backup \
+      --one-file-system \
+      --exclude-file "$EXCLUDES_FILE" \
+      --tag excalibur \
+      "${existing_paths[@]}" \
+      "$@"
+    restic forget \
+      --tag excalibur \
+      --keep-daily {{ excalibur_backup_keep_daily }} \
+      --keep-weekly {{ excalibur_backup_keep_weekly }} \
+      --keep-monthly {{ excalibur_backup_keep_monthly }} \
+      --prune
+    ;;
+  check)
+    restic check "$@"
+    ;;
+  snapshots)
+    restic snapshots "$@"
+    ;;
+  forget)
+    restic forget "$@"
+    ;;
+  *)
+    echo "Usage: {{ excalibur_backup_script }} {init|backup|check|snapshots|forget}" >&2
+    exit 64
+    ;;
+esac

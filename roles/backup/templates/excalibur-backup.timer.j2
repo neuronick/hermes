@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Excalibur encrypted restic backup
+
+[Timer]
+OnCalendar={{ excalibur_backup_calendar }}
+RandomizedDelaySec={{ excalibur_backup_randomized_delay }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

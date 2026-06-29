@@ -49,7 +49,7 @@ ansible-playbook playbooks/site.yml --syntax-check
 2. `playbooks/10-t7-root.yml`: destructive T7 boot/root migration. This is
    intentionally not part of `site.yml`.
 3. `playbooks/site.yml`: base OS, hardening, Docker, Tailscale, Cloudflare
-   tooling, and Hermes container layout.
+   tooling, Hermes container layout, and restic backup scaffolding.
 
 The T7 migration refuses to run unless this explicit flag is passed:
 
