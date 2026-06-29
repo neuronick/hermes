@@ -1,6 +1,7 @@
 excalibur_hostname: excalibur
 excalibur_fqdn: excalibur.openadviser.com
 excalibur_tailscale_ip: 100.75.126.41
+excalibur_tailscale_interface: tailscale0
 excalibur_timezone: Europe/Brussels
 excalibur_lan_cidr: 192.168.64.0/24
 
@@ -19,6 +20,7 @@ excalibur_hermes_enable_service: false
 excalibur_hermes_start_containers: false
 
 excalibur_enable_ufw: true
+excalibur_allow_lan_ssh: true
 
 tailscale_auth_key: ""
 cloudflare_tunnel_token: ""

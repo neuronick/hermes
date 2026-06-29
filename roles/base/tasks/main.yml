@@ -137,9 +137,32 @@
   changed_when: false
   when: excalibur_enable_ufw | bool
 
-- name: Allow SSH through UFW
-  ansible.builtin.command: ufw allow 22/tcp
+- name: Allow SSH through UFW on Tailscale
+  ansible.builtin.command: ufw allow in on {{ excalibur_tailscale_interface }} to any port 22 proto tcp
   changed_when: false
+  when: excalibur_enable_ufw | bool
+
+- name: Allow SSH through UFW from LAN fallback
+  ansible.builtin.command: ufw allow from {{ excalibur_lan_cidr }} to any port 22 proto tcp
+  changed_when: false
+  when:
+    - excalibur_enable_ufw | bool
+    - excalibur_allow_lan_ssh | bool
+
+- name: Remove broad SSH allow rule from UFW
+  ansible.builtin.shell: |
+    set -eu
+    removed=0
+    numbers="$(ufw status numbered | sed -nE 's/^\[[[:space:]]*([0-9]+)\][[:space:]]+22\/tcp( \(v6\))?[[:space:]]+ALLOW IN[[:space:]]+Anywhere( \(v6\))?[[:space:]]*$/\1/p' | sort -rn)"
+    for number in $numbers; do
+      ufw --force delete "$number"
+      removed=1
+    done
+    echo "removed=$removed"
+  args:
+    executable: /bin/bash
+  register: excalibur_ufw_removed_broad_ssh
+  changed_when: "'removed=1' in excalibur_ufw_removed_broad_ssh.stdout"
   when: excalibur_enable_ufw | bool
 
 - name: Allow mDNS from LAN through UFW

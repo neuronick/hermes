@@ -18,7 +18,8 @@
 - UFW enabled:
   - default deny incoming
   - default allow outgoing
-  - SSH allowed
+  - SSH allowed on Tailscale
+  - SSH allowed from LAN fallback
   - mDNS allowed from `192.168.64.0/24`
 - `fail2ban` active.
 - unattended upgrades enabled.
@@ -57,9 +58,7 @@ until their domain entries are enabled.
 
 ## Next Auth / Runtime Steps
 
-- Keep Ansible inventory on the LAN IP until the Mac can route to the Tailscale
-  IP. Excalibur is already on the tailnet at `100.75.126.41`, but this Mac did
-  not have a working local Tailscale route during verification.
+- Ansible inventory now uses the Tailscale IP `100.75.126.41`.
 
 - Create/install the Cloudflare Tunnel when public ingress is ready.
 - Populate domain-specific `secrets/hermes.env` files.

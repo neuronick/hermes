@@ -8,6 +8,9 @@ ansible-playbook playbooks/site.yml --syntax-check
 ansible-playbook playbooks/site.yml --check
 ```
 
+Inventory targets Excalibur over Tailscale at `100.75.126.41`. The LAN address
+`192.168.64.39` remains a fallback if the tailnet is unavailable.
+
 ## T7 Boot Migration
 
 The migration is destructive to the Samsung T7. It verifies the USB disk serial
