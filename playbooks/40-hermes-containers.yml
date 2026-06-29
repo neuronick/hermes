@@ -1,0 +1,7 @@
+- name: Excalibur Hermes domain containers
+  hosts: excalibur
+  become: true
+  gather_facts: true
+  roles:
+    - hermes_containers
+

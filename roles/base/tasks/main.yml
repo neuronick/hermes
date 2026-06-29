@@ -1,0 +1,153 @@
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ excalibur_base_packages }}"
+    state: present
+
+- name: Read current timezone
+  ansible.builtin.command: timedatectl show -p Timezone --value
+  register: excalibur_current_timezone
+  changed_when: false
+  failed_when: false
+
+- name: Set timezone
+  ansible.builtin.command: timedatectl set-timezone {{ excalibur_timezone }}
+  when: excalibur_current_timezone.stdout != excalibur_timezone
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ excalibur_hostname }}"
+
+- name: Ensure hostname is in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ excalibur_hostname }} {{ excalibur_fqdn }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure SSH hardening drop-in
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/20-excalibur-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      X11Forwarding no
+      AllowUsers hermes
+  notify: Restart ssh
+
+- name: Validate sshd configuration
+  ansible.builtin.command: sshd -t
+  changed_when: false
+
+- name: Configure unattended upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+
+- name: Limit journald disk usage
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure journald limits
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/20-excalibur.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Journal]
+      SystemMaxUse=256M
+      RuntimeMaxUse=64M
+      MaxRetentionSec=14day
+  notify: Restart journald
+
+- name: Configure kernel hardening sysctls
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-excalibur-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      fs.protected_fifos = 2
+      fs.protected_hardlinks = 1
+      fs.protected_regular = 2
+      fs.protected_symlinks = 1
+      kernel.dmesg_restrict = 1
+      kernel.kptr_restrict = 1
+      kernel.unprivileged_bpf_disabled = 1
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv4.conf.all.accept_source_route = 0
+      net.ipv4.conf.all.log_martians = 1
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.conf.default.accept_redirects = 0
+      net.ipv4.conf.default.accept_source_route = 0
+      net.ipv4.tcp_syncookies = 1
+  notify: Apply sysctl
+
+- name: Configure fail2ban for sshd
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.d/sshd.local
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [sshd]
+      enabled = true
+      backend = systemd
+      bantime = 1h
+      findtime = 10m
+      maxretry = 6
+
+- name: Enable fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+
+- name: Configure UFW default incoming policy
+  ansible.builtin.command: ufw default deny incoming
+  changed_when: false
+  when: excalibur_enable_ufw | bool
+
+- name: Configure UFW default outgoing policy
+  ansible.builtin.command: ufw default allow outgoing
+  changed_when: false
+  when: excalibur_enable_ufw | bool
+
+- name: Allow SSH through UFW
+  ansible.builtin.command: ufw allow 22/tcp
+  changed_when: false
+  when: excalibur_enable_ufw | bool
+
+- name: Allow mDNS from LAN through UFW
+  ansible.builtin.command: ufw allow from {{ excalibur_lan_cidr }} to any port 5353 proto udp
+  changed_when: false
+  when: excalibur_enable_ufw | bool
+
+- name: Enable UFW
+  ansible.builtin.command: ufw --force enable
+  changed_when: false
+  when: excalibur_enable_ufw | bool

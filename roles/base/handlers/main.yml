@@ -1,0 +1,15 @@
+- name: Restart ssh
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+  when: not ansible_check_mode
+
+- name: Restart journald
+  ansible.builtin.service:
+    name: systemd-journald
+    state: restarted
+  when: not ansible_check_mode
+
+- name: Apply sysctl
+  ansible.builtin.command: sysctl --system
+  changed_when: false

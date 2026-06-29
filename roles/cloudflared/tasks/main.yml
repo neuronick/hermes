@@ -1,0 +1,37 @@
+- name: Install Cloudflare apt key
+  ansible.builtin.get_url:
+    url: https://pkg.cloudflare.com/cloudflare-main.gpg
+    dest: /usr/share/keyrings/cloudflare-main.gpg
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure cloudflared apt repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/cloudflared.sources
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      Types: deb
+      URIs: https://pkg.cloudflare.com/cloudflared
+      Suites: any
+      Components: main
+      Signed-By: /usr/share/keyrings/cloudflare-main.gpg
+
+- name: Install cloudflared
+  ansible.builtin.apt:
+    name: cloudflared
+    state: present
+    update_cache: true
+  when: not ansible_check_mode
+
+- name: Install Cloudflare Tunnel service when token is provided
+  ansible.builtin.command: cloudflared service install {{ cloudflare_tunnel_token }}
+  no_log: true
+  when: cloudflare_tunnel_token | length > 0
+
+- name: Report manual Cloudflare Tunnel activation step
+  ansible.builtin.debug:
+    msg: "Run on Excalibur after creating the tunnel: sudo cloudflared service install <tunnel-token>"
+  when: cloudflare_tunnel_token | length == 0

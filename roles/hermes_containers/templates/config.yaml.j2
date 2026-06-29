@@ -1,0 +1,30 @@
+model:
+  base_url: ""
+  default: gpt-5.5
+  provider: openai-codex
+providers: {}
+fallback_providers: []
+toolsets:
+  - hermes-cli
+agent:
+  max_turns: 60
+  gateway_timeout: 1800
+  restart_drain_timeout: 180
+  api_max_retries: 3
+  task_completion_guidance: true
+  environment_probe: true
+terminal:
+  backend: local
+  cwd: /workspace
+  timeout: 180
+  persistent_shell: true
+web:
+  backend: ""
+  search_backend: ""
+  extract_backend: ""
+browser:
+  allow_private_urls: false
+checkpoints:
+  enabled: false
+file_read_max_chars: 100000
+

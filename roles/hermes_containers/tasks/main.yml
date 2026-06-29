@@ -1,0 +1,106 @@
+- name: Create Excalibur root directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ excalibur_root }}"
+    - "{{ excalibur_compose_dir }}"
+    - "{{ excalibur_root }}/agents"
+    - "{{ excalibur_root }}/state"
+    - "{{ excalibur_root }}/logs"
+
+- name: Create per-agent directories
+  ansible.builtin.file:
+    path: "{{ excalibur_root }}/agents/{{ item.0.id }}/{{ item.1 }}"
+    state: directory
+    owner: "{{ excalibur_agent_uid }}"
+    group: "{{ excalibur_agent_gid }}"
+    mode: "{{ '0700' if item.1 == 'secrets' else '0750' }}"
+  loop: "{{ excalibur_agents | product(['home', 'workspace', 'logs', 'secrets']) | list }}"
+
+- name: Write per-agent SOUL.md
+  ansible.builtin.template:
+    src: SOUL.md.j2
+    dest: "{{ excalibur_root }}/agents/{{ item.id }}/home/SOUL.md"
+    owner: "{{ excalibur_agent_uid }}"
+    group: "{{ excalibur_agent_gid }}"
+    mode: "0640"
+  loop: "{{ excalibur_agents }}"
+
+- name: Write per-agent Hermes config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ excalibur_root }}/agents/{{ item.id }}/home/config.yaml"
+    owner: "{{ excalibur_agent_uid }}"
+    group: "{{ excalibur_agent_gid }}"
+    mode: "0640"
+  loop: "{{ excalibur_agents }}"
+
+- name: Create placeholder per-agent secrets file
+  ansible.builtin.template:
+    src: hermes.env.j2
+    dest: "{{ excalibur_root }}/agents/{{ item.id }}/secrets/hermes.env"
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  loop: "{{ excalibur_agents }}"
+
+- name: Write Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ excalibur_compose_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart excalibur hermes
+
+- name: Write systemd unit for Hermes domain containers
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/excalibur-hermes.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Excalibur Hermes domain containers
+      Requires=docker.service
+      After=docker.service network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      WorkingDirectory={{ excalibur_compose_dir }}
+      ExecStart=/usr/bin/docker compose up
+      ExecStop=/usr/bin/docker compose down
+      Restart=always
+      RestartSec=10
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - Reload systemd
+    - Restart excalibur hermes
+
+- name: Enable or disable Hermes systemd service
+  ansible.builtin.service:
+    name: excalibur-hermes
+    enabled: "{{ excalibur_hermes_enable_service | bool }}"
+    state: "{{ 'started' if excalibur_hermes_start_containers | bool else 'stopped' }}"
+  when: not ansible_check_mode
+
+- name: Pull Hermes image when requested
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: "{{ excalibur_compose_dir }}"
+  when:
+    - excalibur_hermes_pull_image | bool
+    - not ansible_check_mode
+
+- name: Report agent secrets locations
+  ansible.builtin.debug:
+    msg: "{{ item.person_name }} secrets: {{ excalibur_root }}/agents/{{ item.id }}/secrets/hermes.env"
+  loop: "{{ excalibur_agents }}"

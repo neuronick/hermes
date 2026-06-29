@@ -1,0 +1,8 @@
+.DS_Store
+*.retry
+*.log
+.ansible/
+vault.yml
+*.vault.yml
+secrets/
+

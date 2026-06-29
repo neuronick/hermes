@@ -1,0 +1,54 @@
+- name: Assert target architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.architecture == "aarch64"
+    fail_msg: "Excalibur is expected to be an arm64 Raspberry Pi target."
+
+- name: Capture current root filesystem
+  ansible.builtin.command: findmnt -no SOURCE,FSTYPE,OPTIONS /
+  register: preflight_root
+  changed_when: false
+
+- name: Capture block devices
+  ansible.builtin.command: lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,PARTUUID,MOUNTPOINTS,MODEL,TRAN
+  register: preflight_lsblk
+  changed_when: false
+
+- name: Resolve configured T7 device
+  ansible.builtin.command: readlink -f {{ excalibur_t7_device }}
+  register: preflight_t7_resolved
+  changed_when: false
+
+- name: Capture T7 udev properties
+  ansible.builtin.command: udevadm info --query=property --name={{ preflight_t7_resolved.stdout }}
+  register: preflight_t7_udev
+  changed_when: false
+
+- name: Assert T7 identity
+  ansible.builtin.assert:
+    that:
+      - "'ID_VENDOR=Samsung' in preflight_t7_udev.stdout"
+      - "'ID_MODEL=PSSD_T7' in preflight_t7_udev.stdout"
+      - "'ID_SERIAL_SHORT=' ~ excalibur_t7_serial in preflight_t7_udev.stdout"
+    fail_msg: "Configured T7 device does not match the expected Samsung T7 identity."
+
+- name: Capture throttling status
+  ansible.builtin.command: vcgencmd get_throttled
+  register: preflight_throttled
+  changed_when: false
+  failed_when: false
+
+- name: Capture temperature
+  ansible.builtin.command: vcgencmd measure_temp
+  register: preflight_temp
+  changed_when: false
+  failed_when: false
+
+- name: Report preflight summary
+  ansible.builtin.debug:
+    msg:
+      - "Root: {{ preflight_root.stdout }}"
+      - "T7: {{ preflight_t7_resolved.stdout }}"
+      - "Throttle: {{ preflight_throttled.stdout | default('unavailable') }}"
+      - "Temp: {{ preflight_temp.stdout | default('unavailable') }}"
+      - "{{ preflight_lsblk.stdout_lines }}"

@@ -1,0 +1,7 @@
+- name: Excalibur preflight checks
+  hosts: excalibur
+  become: true
+  gather_facts: true
+  roles:
+    - preflight
+

@@ -1,0 +1,194 @@
+- name: Refuse destructive T7 migration unless explicitly confirmed
+  ansible.builtin.assert:
+    that:
+      - excalibur_t7_confirm_destroy | bool
+    fail_msg: >
+      This play repartitions and formats the Samsung T7. Re-run with
+      -e excalibur_t7_confirm_destroy=true after confirming the target disk.
+
+- name: Install storage migration tools
+  ansible.builtin.apt:
+    name:
+      - dosfstools
+      - e2fsprogs
+      - parted
+      - rsync
+    state: present
+    update_cache: true
+
+- name: Capture current root source
+  ansible.builtin.command: findmnt -no SOURCE /
+  register: t7_current_root
+  changed_when: false
+
+- name: Resolve T7 disk
+  ansible.builtin.command: readlink -f {{ excalibur_t7_device }}
+  register: t7_disk
+  changed_when: false
+
+- name: Capture T7 udev identity
+  ansible.builtin.command: udevadm info --query=property --name={{ t7_disk.stdout }}
+  register: t7_udev
+  changed_when: false
+
+- name: Assert migration target safety
+  ansible.builtin.assert:
+    that:
+      - "'ID_VENDOR=Samsung' in t7_udev.stdout"
+      - "'ID_MODEL=PSSD_T7' in t7_udev.stdout"
+      - "'ID_SERIAL_SHORT=' ~ excalibur_t7_serial in t7_udev.stdout"
+      - t7_current_root.stdout is search('/dev/mmcblk')
+      - t7_current_root.stdout != t7_disk.stdout
+    fail_msg: "Refusing to repartition: root is not on microSD or T7 identity did not match."
+
+- name: Unmount any mounted T7 partitions
+  ansible.builtin.shell: |
+    set -eu
+    for child in $(lsblk -ln -o NAME "{{ t7_disk.stdout }}" | tail -n +2); do
+      dev="/dev/${child}"
+      if findmnt -rn --source "$dev" >/dev/null; then
+        umount "$dev"
+      fi
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Wipe T7 signatures
+  ansible.builtin.command: wipefs -a {{ t7_disk.stdout }}
+
+- name: Create T7 GPT with boot and root partitions
+  ansible.builtin.command: >
+    parted -s {{ t7_disk.stdout }}
+    mklabel gpt
+    mkpart bootfs fat32 1MiB {{ excalibur_t7_boot_size_mib + 1 }}MiB
+    set 1 boot on
+    name 1 bootfs
+    mkpart rootfs ext4 {{ excalibur_t7_boot_size_mib + 1 }}MiB 100%
+    name 2 rootfs
+
+- name: Re-read T7 partition table
+  ansible.builtin.command: partprobe {{ t7_disk.stdout }}
+  changed_when: false
+
+- name: Wait for T7 boot partition
+  ansible.builtin.wait_for:
+    path: "{{ excalibur_t7_device }}-part1"
+    timeout: 20
+
+- name: Wait for T7 root partition
+  ansible.builtin.wait_for:
+    path: "{{ excalibur_t7_device }}-part2"
+    timeout: 20
+
+- name: Format T7 boot partition
+  ansible.builtin.command: mkfs.vfat -F 32 -n bootfs {{ excalibur_t7_device }}-part1
+
+- name: Format T7 root partition
+  ansible.builtin.command: mkfs.ext4 -F -L rootfs {{ excalibur_t7_device }}-part2
+
+- name: Create migration mountpoints
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /mnt/excalibur-t7-root
+    - /mnt/excalibur-t7-root/boot
+    - /mnt/excalibur-t7-root/boot/firmware
+
+- name: Mount T7 root partition
+  ansible.builtin.mount:
+    path: /mnt/excalibur-t7-root
+    src: "{{ excalibur_t7_device }}-part2"
+    fstype: ext4
+    state: ephemeral
+
+- name: Ensure T7 boot mountpoint exists after root mount
+  ansible.builtin.file:
+    path: /mnt/excalibur-t7-root/boot/firmware
+    state: directory
+    mode: "0755"
+
+- name: Mount T7 boot partition
+  ansible.builtin.mount:
+    path: /mnt/excalibur-t7-root/boot/firmware
+    src: "{{ excalibur_t7_device }}-part1"
+    fstype: vfat
+    state: ephemeral
+
+- name: Copy root filesystem to T7
+  ansible.builtin.command: >
+    rsync -aAXH --numeric-ids --one-file-system
+    --exclude=/var/swap
+    /
+    /mnt/excalibur-t7-root/
+  async: 7200
+  poll: 15
+
+- name: Copy boot filesystem to T7
+  ansible.builtin.command: rsync -aH --delete /boot/firmware/ /mnt/excalibur-t7-root/boot/firmware/
+
+- name: Read T7 boot PARTUUID
+  ansible.builtin.command: lsblk -no PARTUUID {{ excalibur_t7_device }}-part1
+  register: t7_boot_partuuid
+  changed_when: false
+
+- name: Read T7 root PARTUUID
+  ansible.builtin.command: lsblk -no PARTUUID {{ excalibur_t7_device }}-part2
+  register: t7_root_partuuid
+  changed_when: false
+
+- name: Point copied cmdline.txt at T7 root
+  ansible.builtin.replace:
+    path: /mnt/excalibur-t7-root/boot/firmware/cmdline.txt
+    regexp: 'root=[^ ]+'
+    replace: "root=PARTUUID={{ t7_root_partuuid.stdout }}"
+
+- name: Write copied fstab for T7 boot/root
+  ansible.builtin.copy:
+    dest: /mnt/excalibur-t7-root/etc/fstab
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      proc            /proc           proc    defaults          0       0
+      PARTUUID={{ t7_boot_partuuid.stdout }}  /boot/firmware  vfat    defaults,flush    0       2
+      PARTUUID={{ t7_root_partuuid.stdout }}  /               ext4    defaults,noatime  0       1
+
+- name: Set copied hostname
+  ansible.builtin.copy:
+    dest: /mnt/excalibur-t7-root/etc/hostname
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ excalibur_hostname }}\n"
+
+- name: Mark migrated image
+  ansible.builtin.copy:
+    dest: /mnt/excalibur-t7-root/etc/excalibur-t7-root
+    owner: root
+    group: root
+    mode: "0644"
+    content: "Created by Ansible from {{ inventory_hostname }} on {{ ansible_facts.date_time.iso8601 }}\n"
+
+- name: Sync disks
+  ansible.builtin.command: sync
+  changed_when: false
+
+- name: Unmount T7 boot partition
+  ansible.builtin.mount:
+    path: /mnt/excalibur-t7-root/boot/firmware
+    state: unmounted
+
+- name: Unmount T7 root partition
+  ansible.builtin.mount:
+    path: /mnt/excalibur-t7-root
+    state: unmounted
+
+- name: Report next manual boot step
+  ansible.builtin.debug:
+    msg:
+      - "T7 is prepared as a bootable Pi OS disk."
+      - "Power down, remove the microSD card, and boot with only the T7 attached."
+      - "After boot, verify: findmnt -no SOURCE /"

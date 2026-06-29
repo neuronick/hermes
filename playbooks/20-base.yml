@@ -1,0 +1,7 @@
+- name: Base Excalibur OS and hardening
+  hosts: excalibur
+  become: true
+  gather_facts: true
+  roles:
+    - base
+

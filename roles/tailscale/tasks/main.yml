@@ -1,0 +1,44 @@
+- name: Install Tailscale apt key
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/debian/{{ ansible_facts.distribution_release }}.noarmor.gpg"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install Tailscale apt source
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/debian/{{ ansible_facts.distribution_release }}.tailscale-keyring.list"
+    dest: /etc/apt/sources.list.d/tailscale.list
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: true
+  when: not ansible_check_mode
+
+- name: Enable tailscaled
+  ansible.builtin.service:
+    name: tailscaled
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+
+- name: Authenticate Tailscale when auth key is provided
+  ansible.builtin.command: >
+    tailscale up
+    --authkey={{ tailscale_auth_key }}
+    --hostname={{ excalibur_hostname }}
+    --ssh=false
+    --accept-dns=false
+  no_log: true
+  when: tailscale_auth_key | length > 0
+
+- name: Report manual Tailscale activation step
+  ansible.builtin.debug:
+    msg: "Run on Excalibur: sudo tailscale up --hostname {{ excalibur_hostname }} --ssh=false --accept-dns=false"
+  when: tailscale_auth_key | length == 0

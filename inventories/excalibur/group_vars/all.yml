@@ -1,0 +1,86 @@
+excalibur_hostname: excalibur
+excalibur_fqdn: excalibur.openadviser.com
+excalibur_timezone: Europe/Brussels
+excalibur_lan_cidr: 192.168.64.0/24
+
+excalibur_t7_device: /dev/disk/by-id/usb-Samsung_PSSD_T7_S7MLNL0L313066X-0:0
+excalibur_t7_serial: S7MLNL0L313066X
+excalibur_t7_confirm_destroy: false
+excalibur_t7_boot_size_mib: 512
+
+excalibur_root: /srv/excalibur
+excalibur_compose_dir: /srv/excalibur/compose
+excalibur_agent_uid: 1000
+excalibur_agent_gid: 1000
+excalibur_hermes_image: nousresearch/hermes-agent:latest
+excalibur_hermes_pull_image: true
+excalibur_hermes_enable_service: false
+excalibur_hermes_start_containers: false
+
+excalibur_enable_ufw: true
+
+tailscale_auth_key: ""
+cloudflare_tunnel_token: ""
+
+excalibur_base_packages:
+  - apt-transport-https
+  - apt-listchanges
+  - ca-certificates
+  - curl
+  - dosfstools
+  - e2fsprogs
+  - fail2ban
+  - fio
+  - git
+  - gnupg
+  - hdparm
+  - htop
+  - jq
+  - nvme-cli
+  - parted
+  - python3-apt
+  - python3-debian
+  - python3-pip
+  - python3-venv
+  - ripgrep
+  - rsync
+  - smartmontools
+  - sysstat
+  - tmux
+  - unattended-upgrades
+  - ufw
+  - vim
+
+excalibur_agents:
+  - id: openadviser
+    container_name: hermes-openadviser
+    person_name: Miro
+    domain_name: Openadviser
+    description: Openadviser administrative assistant.
+    memory_mb: 1536
+    cpus: "1.0"
+    slack_enabled: true
+  - id: syndiary
+    container_name: hermes-syndiary
+    person_name: Enid
+    domain_name: Syndiary
+    description: Syndiary administrative assistant and organisational knowledge gatherer.
+    memory_mb: 1536
+    cpus: "1.0"
+    slack_enabled: false
+  - id: family
+    container_name: hermes-family
+    person_name: Mary
+    domain_name: Home and Family
+    description: Home and family administration, reminders, and planning.
+    memory_mb: 1024
+    cpus: "0.75"
+    slack_enabled: false
+  - id: personal
+    container_name: hermes-personal
+    person_name: Lunete
+    domain_name: Personal
+    description: Personal coach and assistant.
+    memory_mb: 1024
+    cpus: "0.75"
+    slack_enabled: false

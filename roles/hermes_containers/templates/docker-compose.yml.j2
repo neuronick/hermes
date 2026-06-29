@@ -1,0 +1,22 @@
+services:
+{% for agent in excalibur_agents %}
+  {{ agent.container_name }}:
+    image: {{ excalibur_hermes_image }}
+    container_name: {{ agent.container_name }}
+    restart: unless-stopped
+    cpus: "{{ agent.cpus }}"
+    mem_limit: "{{ agent.memory_mb }}m"
+    env_file:
+      - {{ excalibur_root }}/agents/{{ agent.id }}/secrets/hermes.env
+    environment:
+      HERMES_UID: "{{ excalibur_agent_uid }}"
+      HERMES_GID: "{{ excalibur_agent_gid }}"
+    volumes:
+      - {{ excalibur_root }}/agents/{{ agent.id }}/home:/opt/data
+      - {{ excalibur_root }}/agents/{{ agent.id }}/workspace:/workspace
+      - {{ excalibur_root }}/agents/{{ agent.id }}/logs:/var/log/hermes
+    working_dir: /workspace
+    command: ["gateway", "run"]
+    security_opt:
+      - no-new-privileges:true
+{% endfor %}

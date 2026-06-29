@@ -1,0 +1,7 @@
+- name: Build bootable Samsung T7 root disk
+  hosts: excalibur
+  become: true
+  gather_facts: true
+  roles:
+    - t7_root
+

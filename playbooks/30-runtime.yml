@@ -1,0 +1,9 @@
+- name: Excalibur container and access runtime
+  hosts: excalibur
+  become: true
+  gather_facts: true
+  roles:
+    - docker
+    - tailscale
+    - cloudflared
+
