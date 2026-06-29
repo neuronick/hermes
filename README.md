@@ -1,5 +1,7 @@
 # Hermes Excalibur Provisioning
 
+Personal Hermes setup on Raspberry Pi 4 8GB + Samsung SSD T7 1TB.
+
 Ansible prototype for provisioning `excalibur`, the always-on Raspberry Pi 4
 host for domain-isolated Hermes agents.
 
@@ -66,4 +68,3 @@ These are prepared by Ansible but require manual or secret-backed activation:
   `/srv/excalibur/agents/<domain>/secrets/hermes.env`.
 
 Do not commit real tokens to this repository.
-
