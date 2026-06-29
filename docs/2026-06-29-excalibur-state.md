@@ -25,7 +25,8 @@
 - journald retention limited.
 - kernel hardening sysctls installed.
 - Docker installed and active; user was not added to the Docker group.
-- Tailscale installed and `tailscaled` active, not authenticated yet.
+- Tailscale installed, `tailscaled` active, and authenticated as
+  `excalibur` at `100.75.126.41`.
 - `cloudflared` installed, no tunnel service installed yet.
 - Hermes Docker image pulled: `nousresearch/hermes-agent:latest`.
 - No failed systemd units after T7 boot.
@@ -56,11 +57,9 @@ until their domain entries are enabled.
 
 ## Next Auth / Runtime Steps
 
-- Authenticate Tailscale:
-
-```sh
-sudo tailscale up --hostname excalibur --ssh=false --accept-dns=false
-```
+- Keep Ansible inventory on the LAN IP until the Mac can route to the Tailscale
+  IP. Excalibur is already on the tailnet at `100.75.126.41`, but this Mac did
+  not have a working local Tailscale route during verification.
 
 - Create/install the Cloudflare Tunnel when public ingress is ready.
 - Populate domain-specific `secrets/hermes.env` files.

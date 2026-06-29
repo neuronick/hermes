@@ -10,6 +10,7 @@ host for domain-isolated Hermes agents.
 - Host: Raspberry Pi 4, arm64 Debian/Raspberry Pi OS
 - Current bootstrap address: `192.168.64.39`
 - Production hostname: `excalibur`
+- Tailscale IP: `100.75.126.41`
 - Production storage: Samsung T7, serial `S7MLNL0L313066X`
 
 ## Agent Domains

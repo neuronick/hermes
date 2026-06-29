@@ -1,5 +1,6 @@
 excalibur_hostname: excalibur
 excalibur_fqdn: excalibur.openadviser.com
+excalibur_tailscale_ip: 100.75.126.41
 excalibur_timezone: Europe/Brussels
 excalibur_lan_cidr: 192.168.64.0/24
 
