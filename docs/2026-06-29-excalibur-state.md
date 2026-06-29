@@ -50,6 +50,10 @@ Each domain has:
 `excalibur-hermes.service` exists but is disabled and stopped until secrets are
 configured.
 
+Only `openadviser` / Miro is enabled in the active Docker Compose file. Enid,
+Mary, and Lunete are staged on disk but not rendered into the active runtime
+until their domain entries are enabled.
+
 ## Next Auth / Runtime Steps
 
 - Authenticate Tailscale:

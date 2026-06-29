@@ -44,3 +44,13 @@ Each domain has a separate secrets file:
 Start with only `openadviser` configured, then add the other domains after the
 runtime is stable.
 
+## Enabling Agent Domains
+
+Set `enabled: true` for the intended domain in
+`inventories/excalibur/group_vars/all.yml`, then apply:
+
+```sh
+ansible-playbook playbooks/40-hermes-containers.yml
+```
+
+The initial active domain is `openadviser` / Miro only.

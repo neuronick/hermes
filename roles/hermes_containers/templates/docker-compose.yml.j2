@@ -1,5 +1,6 @@
 services:
 {% for agent in excalibur_agents %}
+{% if agent.enabled | default(false) %}
   {{ agent.container_name }}:
     image: {{ excalibur_hermes_image }}
     container_name: {{ agent.container_name }}
@@ -19,4 +20,5 @@ services:
     command: ["gateway", "run"]
     security_opt:
       - no-new-privileges:true
+{% endif %}
 {% endfor %}

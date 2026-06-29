@@ -23,6 +23,9 @@ The system uses separate Hermes containers by trust boundary:
 
 Each domain gets its own `/srv/excalibur/agents/<domain>` tree, `SOUL.md`,
 `config.yaml`, secrets file, workspace, logs, and Docker container.
+Only domains with `enabled: true` in `inventories/excalibur/group_vars/all.yml`
+are rendered into the active Docker Compose file. The initial runtime enables
+Miro/Openadviser only.
 
 ## First Commands
 

@@ -53,6 +53,7 @@ excalibur_base_packages:
 
 excalibur_agents:
   - id: openadviser
+    enabled: true
     container_name: hermes-openadviser
     person_name: Miro
     domain_name: Openadviser
@@ -61,6 +62,7 @@ excalibur_agents:
     cpus: "1.0"
     slack_enabled: true
   - id: syndiary
+    enabled: false
     container_name: hermes-syndiary
     person_name: Enid
     domain_name: Syndiary
@@ -69,6 +71,7 @@ excalibur_agents:
     cpus: "1.0"
     slack_enabled: false
   - id: family
+    enabled: false
     container_name: hermes-family
     person_name: Mary
     domain_name: Home and Family
@@ -77,6 +80,7 @@ excalibur_agents:
     cpus: "0.75"
     slack_enabled: false
   - id: personal
+    enabled: false
     container_name: hermes-personal
     person_name: Lunete
     domain_name: Personal
